@@ -19,6 +19,7 @@ from vanilla_gcn_numpy.gcn_layer import GCNLayerNumPy
 from vanilla_gcn_numpy.vanilla_gcn import VanillaGCNNumPy
 from vanilla_gcn_numpy.trainer import train_gcn_numpy, TrainingHistoryNumPy
 from vanilla_gcn_numpy.evaluation import accuracy_numpy, evaluate_gcn_numpy
+from vanilla_gcn_numpy.synthetic import create_synthetic_graph_numpy
 
 __all__ = [
     "add_self_loops",
@@ -32,5 +33,6 @@ __all__ = [
     "train_gcn_numpy",
     "TrainingHistoryNumPy",
     "accuracy_numpy",
+    "create_synthetic_graph_numpy",
     "evaluate_gcn_numpy",
 ]
