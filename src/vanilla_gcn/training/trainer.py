@@ -201,7 +201,7 @@ def train_gcn(
                 "Epoch %03d | Train Loss: %.4f | Train Acc: %.1f%% | "
                 "Val Loss: %.4f | Val Acc: %.1f%%",
                 epoch,
-                float(train_loss),
+                train_loss.detach().item(),
                 float(train_acc_val),
                 float(val_loss_val),
                 float(val_acc_val),

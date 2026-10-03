@@ -1,9 +1,34 @@
-# Vanilla GCN
+## Two Implementations — Same Architecture
 
-A clean, mathematically transparent implementation of the **Vanilla Graph Convolutional Network (GCN)** — built without PyTorch Geometric or DGL. Every computation is explicit.
+| | 🔴 PyTorch Version | 🔵 NumPy-Only Version |
+|---|---|---|
+| **Location** | `src/vanilla_gcn/` | `src/vanilla_gcn_numpy/` |
+| **Dependencies** | `torch`, `numpy` | `numpy` only |
+| **Autograd** | PyTorch (`loss.backward()`) | Manual chain-rule backprop |
+| **GCN equation** | `A_tilde @ H @ W` | `A_tilde @ H @ W` (identical) |
+| **Preprocessing** | Same math → `torch.Tensor` | Same math → `np.ndarray` |
+| **Checkpointing** | `torch.save` `.pt` format | `np.savez` `.npz` format |
 
-> **Reference:** William L. Hamilton — *Graph Representation Learning* (2020), Chapters 5 & 7.
-> Kipf & Welling — *Semi-Supervised Classification with Graph Convolutional Networks* (ICLR 2017).
+> **Both versions implement exactly:** $H^{(k)} = \sigma\!\left(\tilde{A}\,H^{(k-1)}\,W^{(k)}\right)$
+
+---
+
+## Quick Start — Google Colab
+
+Open [`notebooks/GCN_Colab_Main.ipynb`](notebooks/GCN_Colab_Main.ipynb) in Colab:
+
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/YOUR_USERNAME/vanilla-gcn/blob/main/notebooks/GCN_Colab_Main.ipynb)
+
+The notebook is **fully self-contained** — all code is defined inline. It:
+- Installs all dependencies automatically
+- Lets you upload your own dataset (CSV, NPZ, NumPy `.npy`, or Google Drive)
+- Trains both versions and compares them side-by-side
+- Shows training curves, PCA embeddings, and over-smoothing analysis
+- Downloads all outputs to your machine
+
+---
+
+
 
 ---
 
