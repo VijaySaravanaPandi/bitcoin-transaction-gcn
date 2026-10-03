@@ -1,0 +1,47 @@
+# =============================================================================
+# Vanilla GCN — Default Configuration
+# =============================================================================
+# All hyperparameters and settings live here.
+# Source code should read values from this file via src/vanilla_gcn/config.py.
+# Do NOT hard-code these values anywhere in the source.
+# =============================================================================
+
+seed: 42
+
+model:
+  # Dimensionality of hidden GCN layers
+  hidden_dim: 16
+  # Number of GCN layers (depth)
+  num_layers: 2
+  # Dropout probability (0.0 = no dropout in vanilla baseline)
+  dropout: 0.0
+
+training:
+  # Adam learning rate
+  learning_rate: 0.01
+  # L2 regularization (weight decay)
+  weight_decay: 0.0005
+  # Total training epochs
+  epochs: 200
+
+data:
+  # Fraction of nodes used for training
+  train_ratio: 0.6
+  # Fraction of nodes used for validation
+  validation_ratio: 0.2
+  # Fraction of nodes used for testing
+  test_ratio: 0.2
+
+debug:
+  # When true, GCNLayer prints shape/stats at every forward pass
+  enabled: true
+
+paths:
+  # All paths are relative to the project root
+  data_raw: "data/raw"
+  data_processed: "data/processed"
+  outputs: "outputs"
+  checkpoints: "outputs/checkpoints"
+  figures: "outputs/figures"
+  embeddings: "outputs/embeddings"
+  logs: "outputs/logs"

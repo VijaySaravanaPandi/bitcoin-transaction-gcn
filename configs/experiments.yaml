@@ -1,0 +1,44 @@
+# =============================================================================
+# Vanilla GCN — Experiments Configuration
+# =============================================================================
+# Define named experiment configurations.
+# Each entry overrides values from default.yaml.
+# =============================================================================
+
+experiments:
+
+  baseline:
+    description: "Vanilla GCN baseline — 2 layers, no dropout"
+    seed: 42
+    model:
+      hidden_dim: 16
+      num_layers: 2
+      dropout: 0.0
+    training:
+      learning_rate: 0.01
+      weight_decay: 0.0005
+      epochs: 200
+
+  deep_gcn:
+    description: "Deep GCN — 5 layers (illustrates over-smoothing risk)"
+    seed: 42
+    model:
+      hidden_dim: 16
+      num_layers: 5
+      dropout: 0.0
+    training:
+      learning_rate: 0.01
+      weight_decay: 0.0005
+      epochs: 200
+
+  oversmoothing_sweep:
+    description: "Sweep over depths to visualize over-smoothing"
+    seed: 42
+    layers_to_test: [1, 2, 3, 5, 8, 10]
+    model:
+      hidden_dim: 16
+      dropout: 0.0
+    training:
+      learning_rate: 0.01
+      weight_decay: 0.0005
+      epochs: 200

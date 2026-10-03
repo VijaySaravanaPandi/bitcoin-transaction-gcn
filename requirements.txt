@@ -1,0 +1,8 @@
+# Runtime dependencies
+torch>=2.1
+numpy>=1.26
+pandas>=2.1
+matplotlib>=3.8
+networkx>=3.2
+scikit-learn>=1.3
+pyyaml>=6.0
