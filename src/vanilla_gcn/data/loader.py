@@ -234,3 +234,188 @@ def load_graph_from_npz(
         seed=seed,
         name=npz_path.stem,
     )
+
+
+# ---------------------------------------------------------------------------
+# Elliptic++ Transactions loader
+# ---------------------------------------------------------------------------
+
+
+def load_elliptic_transactions(
+    raw_dir: str | Path = "data/raw",
+    *,
+    features_file: str = "txs_features.csv",
+    classes_file: str = "txs_classes.csv",
+    edgelist_file: str = "txs_edgelist.csv",
+    train_ratio: float = 0.6,
+    val_ratio: float = 0.2,
+    test_ratio: float = 0.2,
+    seed: int = 42,
+) -> "GraphData":
+    """Load the Elliptic++ Transactions dataset from CSV files.
+
+    Reads the three CSV files that make up the Elliptic++ transaction graph:
+
+    * ``txs_features.csv``  — 203 769 rows × 183 feature columns + txId column
+    * ``txs_classes.csv``   — txId, class  (1 = illicit, 2 = licit, unknown)
+    * ``txs_edgelist.csv``  — txId1, txId2  (directed money-flow edges)
+
+    Class mapping (after loading):
+        illicit (class-1 in CSV)  →  label 0
+        licit   (class-2 in CSV)  →  label 1
+        unknown (class-3 / "unknown" string) → label -1  (excluded from masks)
+
+    Only labelled nodes (illicit + licit) participate in train/val/test masks.
+    All 203 769 nodes are included in the graph for message passing.
+
+    Parameters
+    ----------
+    raw_dir : str or Path
+        Directory containing the three CSV files.
+    features_file, classes_file, edgelist_file : str
+        Filenames within *raw_dir*.
+    train_ratio, val_ratio, test_ratio : float
+        Split ratios for *labelled* nodes (must sum to 1.0).
+    seed : int
+        Random seed for the node split.
+
+    Returns
+    -------
+    GraphData
+        Populated graph data object ready for GCN training.
+
+    Notes
+    -----
+    The adjacency matrix is built as a sparse COO tensor converted to dense
+    for compatibility with the existing preprocessing pipeline.  For very
+    large runs consider switching to sparse operations in
+    :mod:`vanilla_gcn.data.preprocessing`.
+    """
+    import pandas as pd
+    from scipy.sparse import coo_matrix
+
+    raw_dir = Path(raw_dir)
+    assert abs(train_ratio + val_ratio + test_ratio - 1.0) < 1e-6, (
+        "train_ratio + val_ratio + test_ratio must equal 1.0"
+    )
+
+    # ------------------------------------------------------------------
+    # 1. Features
+    # ------------------------------------------------------------------
+    feat_path = raw_dir / features_file
+    if not feat_path.exists():
+        raise FileNotFoundError(
+            f"Features file not found: {feat_path}\n"
+            "Download from https://drive.google.com/drive/folders/1MRPXz79Lu_JGLlJ21MDfML44dKN9R08l"
+        )
+    logger.info("Reading features from %s …", feat_path)
+    feat_df = pd.read_csv(feat_path, header=None)
+    # First column is the transaction id; remaining 183 columns are features.
+    # (The Elliptic++ features file has no header row.)
+    tx_ids = feat_df.iloc[:, 0].astype(int).values  # (N,)
+    X_np = feat_df.iloc[:, 1:].values.astype(np.float32)  # (N, 183)
+    n = len(tx_ids)
+    tx_id_to_idx = {tx_id: idx for idx, tx_id in enumerate(tx_ids)}
+
+    # ------------------------------------------------------------------
+    # 2. Labels
+    # ------------------------------------------------------------------
+    cls_path = raw_dir / classes_file
+    if not cls_path.exists():
+        raise FileNotFoundError(f"Classes file not found: {cls_path}")
+    logger.info("Reading classes from %s …", cls_path)
+    cls_df = pd.read_csv(cls_path)
+    cls_df.columns = cls_df.columns.str.strip()
+
+    # Map raw class values → integer labels
+    # CSV values: "1" = illicit → 0, "2" = licit → 1, "unknown" → -1
+    raw_class = cls_df.set_index("txId")["class"].astype(str).str.strip()
+    y_np = np.full(n, -1, dtype=np.int64)
+    for tx_id, cls_val in raw_class.items():
+        idx = tx_id_to_idx.get(int(tx_id))
+        if idx is None:
+            continue
+        if cls_val == "1":
+            y_np[idx] = 0   # illicit
+        elif cls_val == "2":
+            y_np[idx] = 1   # licit
+        # else: unknown → remains -1
+
+    # ------------------------------------------------------------------
+    # 3. Edges → adjacency
+    # ------------------------------------------------------------------
+    edge_path = raw_dir / edgelist_file
+    if not edge_path.exists():
+        raise FileNotFoundError(f"Edge list file not found: {edge_path}")
+    logger.info("Reading edges from %s …", edge_path)
+    edge_df = pd.read_csv(edge_path)
+    edge_df.columns = edge_df.columns.str.strip()
+
+    src_col, dst_col = edge_df.columns[0], edge_df.columns[1]
+    src_ids = edge_df[src_col].astype(int).values
+    dst_ids = edge_df[dst_col].astype(int).values
+
+    # Filter edges where both endpoints are known
+    valid = np.array(
+        [(s in tx_id_to_idx and d in tx_id_to_idx) for s, d in zip(src_ids, dst_ids)]
+    )
+    src_idx = np.array([tx_id_to_idx[s] for s, v in zip(src_ids, valid) if v])
+    dst_idx = np.array([tx_id_to_idx[d] for d, v in zip(dst_ids, valid) if v])
+
+    # Build symmetric sparse adjacency then convert to dense float32
+    data_ones = np.ones(len(src_idx), dtype=np.float32)
+    # Add reverse edges for symmetry
+    all_src = np.concatenate([src_idx, dst_idx])
+    all_dst = np.concatenate([dst_idx, src_idx])
+    all_data = np.ones(len(all_src), dtype=np.float32)
+    sp = coo_matrix((all_data, (all_src, all_dst)), shape=(n, n))
+    sp.data = np.clip(sp.data, 0, 1)  # deduplicate
+    A_np = sp.toarray().astype(np.float32)
+
+    # ------------------------------------------------------------------
+    # 4. Train / val / test masks (labelled nodes only)
+    # ------------------------------------------------------------------
+    labelled_idx = np.where(y_np >= 0)[0]
+    rng = np.random.default_rng(seed)
+    perm = rng.permutation(labelled_idx)
+    n_lab = len(perm)
+    n_train = int(n_lab * train_ratio)
+    n_val = int(n_lab * val_ratio)
+
+    train_mask = torch.zeros(n, dtype=torch.bool)
+    val_mask = torch.zeros(n, dtype=torch.bool)
+    test_mask = torch.zeros(n, dtype=torch.bool)
+    train_mask[perm[:n_train]] = True
+    val_mask[perm[n_train: n_train + n_val]] = True
+    test_mask[perm[n_train + n_val:]] = True
+
+    # Replace -1 labels with 0 for tensor safety (masked out during training)
+    y_safe = y_np.copy()
+    y_safe[y_safe < 0] = 0
+
+    # ------------------------------------------------------------------
+    # 5. Assemble GraphData
+    # ------------------------------------------------------------------
+    edge_index = torch.tensor(np.stack([all_src, all_dst], axis=0), dtype=torch.long)
+
+    data = GraphData(
+        adjacency=torch.tensor(A_np, dtype=torch.float32),
+        features=torch.tensor(X_np, dtype=torch.float32),
+        labels=torch.tensor(y_safe, dtype=torch.long),
+        node_ids=list(map(int, tx_ids)),
+        edge_index=edge_index,
+        train_mask=train_mask,
+        val_mask=val_mask,
+        test_mask=test_mask,
+        num_classes=2,  # illicit (0) and licit (1)
+        name="elliptic_transactions",
+    )
+
+    logger.info(
+        "Loaded Elliptic++ Transactions: N=%d, F=%d, labelled=%d "
+        "(illicit=%d, licit=%d), edges=%d",
+        n, X_np.shape[1], int((y_np >= 0).sum()),
+        int((y_np == 0).sum()), int((y_np == 1).sum()),
+        len(src_idx),
+    )
+    return data

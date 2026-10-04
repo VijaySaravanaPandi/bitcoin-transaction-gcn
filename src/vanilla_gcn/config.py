@@ -47,11 +47,16 @@ class TrainingConfig:
 
 @dataclass
 class DataConfig:
-    """Data-split ratios."""
+    """Data-split ratios and dataset selection."""
 
     train_ratio: float = 0.6
     validation_ratio: float = 0.2
     test_ratio: float = 0.2
+    # "elliptic" loads the Elliptic++ Transactions CSV files;
+    # "synthetic" uses the built-in synthetic community graph.
+    dataset: str = "elliptic"
+    # Directory containing txs_features.csv / txs_classes.csv / txs_edgelist.csv
+    raw_dir: str = "data/raw"
 
 
 @dataclass
@@ -146,7 +151,8 @@ def load_config(path: str | Path | None = None) -> GCNConfig:
         "seed": 42,
         "model": {"hidden_dim": 16, "num_layers": 2, "dropout": 0.0},
         "training": {"learning_rate": 0.01, "weight_decay": 0.0005, "epochs": 200},
-        "data": {"train_ratio": 0.6, "validation_ratio": 0.2, "test_ratio": 0.2},
+        "data": {"train_ratio": 0.6, "validation_ratio": 0.2, "test_ratio": 0.2,
+                  "dataset": "elliptic", "raw_dir": "data/raw"},
         "debug": {"enabled": True},
         "paths": {
             "data_raw": "data/raw",

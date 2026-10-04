@@ -1,44 +1,67 @@
 # =============================================================================
-# Vanilla GCN — Experiments Configuration
+# Vanilla GCN — Experiments Configuration (Elliptic++ Transactions Dataset)
 # =============================================================================
-# Define named experiment configurations.
 # Each entry overrides values from default.yaml.
+# Dataset stats:  N=203,769  F=183  C=2  labelled=46,564
 # =============================================================================
 
 experiments:
-
-  baseline:
-    description: "Vanilla GCN baseline — 2 layers, no dropout"
+  elliptic_baseline:
+    description: "Elliptic++ baseline — 2-layer GCN, hidden=64, dropout=0.5"
     seed: 42
+    data:
+      dataset: "elliptic"
+      raw_dir: "data/raw"
     model:
-      hidden_dim: 16
+      hidden_dim: 64
       num_layers: 2
-      dropout: 0.0
+      dropout: 0.5
     training:
-      learning_rate: 0.01
+      learning_rate: 0.001
       weight_decay: 0.0005
       epochs: 200
 
-  deep_gcn:
-    description: "Deep GCN — 5 layers (illustrates over-smoothing risk)"
+  elliptic_wider:
+    description: "Elliptic++ wider hidden layer — hidden=128"
     seed: 42
+    data:
+      dataset: "elliptic"
+      raw_dir: "data/raw"
     model:
-      hidden_dim: 16
-      num_layers: 5
-      dropout: 0.0
+      hidden_dim: 128
+      num_layers: 2
+      dropout: 0.5
     training:
-      learning_rate: 0.01
+      learning_rate: 0.001
+      weight_decay: 0.0005
+      epochs: 200
+
+  elliptic_deep:
+    description: "Elliptic++ deeper GCN — 3 layers (risk of over-smoothing)"
+    seed: 42
+    data:
+      dataset: "elliptic"
+      raw_dir: "data/raw"
+    model:
+      hidden_dim: 64
+      num_layers: 3
+      dropout: 0.5
+    training:
+      learning_rate: 0.001
       weight_decay: 0.0005
       epochs: 200
 
   oversmoothing_sweep:
-    description: "Sweep over depths to visualize over-smoothing"
+    description: "Sweep over depths to visualise over-smoothing on Elliptic++"
     seed: 42
     layers_to_test: [1, 2, 3, 5, 8, 10]
+    data:
+      dataset: "elliptic"
+      raw_dir: "data/raw"
     model:
-      hidden_dim: 16
-      dropout: 0.0
+      hidden_dim: 64
+      dropout: 0.5
     training:
-      learning_rate: 0.01
+      learning_rate: 0.001
       weight_decay: 0.0005
       epochs: 200
