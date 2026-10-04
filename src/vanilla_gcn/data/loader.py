@@ -286,10 +286,8 @@ def load_elliptic_transactions(
 
     Notes
     -----
-    The adjacency matrix is built as a sparse COO tensor converted to dense
-    for compatibility with the existing preprocessing pipeline.  For very
-    large runs consider switching to sparse operations in
-    :mod:`vanilla_gcn.data.preprocessing`.
+    The adjacency matrix is kept as a sparse COO tensor so the full
+    Elliptic++ graph can be loaded without allocating an N×N dense matrix.
     """
     import pandas as pd
     from scipy.sparse import coo_matrix
@@ -309,11 +307,13 @@ def load_elliptic_transactions(
             "Download from https://drive.google.com/drive/folders/1MRPXz79Lu_JGLlJ21MDfML44dKN9R08l"
         )
     logger.info("Reading features from %s …", feat_path)
-    feat_df = pd.read_csv(feat_path, header=None)
+    feat_df = pd.read_csv(feat_path, header=0)
     # First column is the transaction id; remaining 183 columns are features.
-    # (The Elliptic++ features file has no header row.)
     tx_ids = feat_df.iloc[:, 0].astype(int).values  # (N,)
     X_np = feat_df.iloc[:, 1:].values.astype(np.float32)  # (N, 183)
+    # Missing feature values occur in the released CSV; zero is the neutral
+    # value for these normalized numeric features and keeps training finite.
+    X_np = np.nan_to_num(X_np, nan=0.0, posinf=0.0, neginf=0.0)
     n = len(tx_ids)
     tx_id_to_idx = {tx_id: idx for idx, tx_id in enumerate(tx_ids)}
 
@@ -362,15 +362,15 @@ def load_elliptic_transactions(
     src_idx = np.array([tx_id_to_idx[s] for s, v in zip(src_ids, valid) if v])
     dst_idx = np.array([tx_id_to_idx[d] for d, v in zip(dst_ids, valid) if v])
 
-    # Build symmetric sparse adjacency then convert to dense float32
-    data_ones = np.ones(len(src_idx), dtype=np.float32)
-    # Add reverse edges for symmetry
+    # Build symmetric sparse adjacency; keep it sparse for the full graph.
     all_src = np.concatenate([src_idx, dst_idx])
     all_dst = np.concatenate([dst_idx, src_idx])
-    all_data = np.ones(len(all_src), dtype=np.float32)
-    sp = coo_matrix((all_data, (all_src, all_dst)), shape=(n, n))
-    sp.data = np.clip(sp.data, 0, 1)  # deduplicate
-    A_np = sp.toarray().astype(np.float32)
+    edge_values = np.ones(len(all_src), dtype=np.float32)
+    adjacency = torch.sparse_coo_tensor(
+        torch.tensor(np.stack([all_src, all_dst]), dtype=torch.long),
+        torch.tensor(edge_values, dtype=torch.float32),
+        size=(n, n),
+    ).coalesce()
 
     # ------------------------------------------------------------------
     # 4. Train / val / test masks (labelled nodes only)
@@ -399,7 +399,7 @@ def load_elliptic_transactions(
     edge_index = torch.tensor(np.stack([all_src, all_dst], axis=0), dtype=torch.long)
 
     data = GraphData(
-        adjacency=torch.tensor(A_np, dtype=torch.float32),
+        adjacency=adjacency,
         features=torch.tensor(X_np, dtype=torch.float32),
         labels=torch.tensor(y_safe, dtype=torch.long),
         node_ids=list(map(int, tx_ids)),

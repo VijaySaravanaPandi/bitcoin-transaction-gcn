@@ -18,8 +18,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from vanilla_gcn.config import load_config
+from vanilla_gcn.data.loader import load_elliptic_transactions
 from vanilla_gcn.data.preprocessing import prepare_graph
-from vanilla_gcn.data.synthetic import create_synthetic_graph
 from vanilla_gcn.models.vanilla_gcn import VanillaGCN
 from vanilla_gcn.seed import set_seed
 from vanilla_gcn.training.evaluation import evaluate_gcn
@@ -56,7 +56,18 @@ def main() -> None:
     set_seed(cfg.seed)
 
     # Data
-    data = create_synthetic_graph(seed=cfg.seed)
+    dataset_name = getattr(cfg.data, "dataset", "elliptic")
+    if dataset_name != "elliptic":
+        raise ValueError(
+            f"Evaluation currently supports the Elliptic++ transaction dataset, got {dataset_name!r}"
+        )
+    data = load_elliptic_transactions(
+        raw_dir=cfg.data.raw_dir,
+        train_ratio=cfg.data.train_ratio,
+        val_ratio=cfg.data.validation_ratio,
+        test_ratio=cfg.data.test_ratio,
+        seed=cfg.seed,
+    )
     _, A_tilde, X, y = prepare_graph(data.adjacency, data.features, data.labels)
 
     # Load checkpoint

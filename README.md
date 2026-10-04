@@ -1,13 +1,13 @@
 ## Two Implementations — Same Architecture
 
-| | 🔴 PyTorch Version | 🔵 NumPy-Only Version |
-|---|---|---|
-| **Location** | `src/vanilla_gcn/` | `src/vanilla_gcn_numpy/` |
-| **Dependencies** | `torch`, `numpy` | `numpy` only |
-| **Autograd** | PyTorch (`loss.backward()`) | Manual chain-rule backprop |
-| **GCN equation** | `A_tilde @ H @ W` | `A_tilde @ H @ W` (identical) |
-| **Preprocessing** | Same math → `torch.Tensor` | Same math → `np.ndarray` |
-| **Checkpointing** | `torch.save` `.pt` format | `np.savez` `.npz` format |
+|                   | 🔴 PyTorch Version          | 🔵 NumPy-Only Version         |
+| ----------------- | --------------------------- | ----------------------------- |
+| **Location**      | `src/vanilla_gcn/`          | `src/vanilla_gcn_numpy/`      |
+| **Dependencies**  | `torch`, `numpy`            | `numpy` only                  |
+| **Autograd**      | PyTorch (`loss.backward()`) | Manual chain-rule backprop    |
+| **GCN equation**  | `A_tilde @ H @ W`           | `A_tilde @ H @ W` (identical) |
+| **Preprocessing** | Same math → `torch.Tensor`  | Same math → `np.ndarray`      |
+| **Checkpointing** | `torch.save` `.pt` format   | `np.savez` `.npz` format      |
 
 > **Both versions implement exactly:** $H^{(k)} = \sigma\!\left(\tilde{A}\,H^{(k-1)}\,W^{(k)}\right)$
 
@@ -20,6 +20,7 @@ Open [`notebooks/GCN_Colab_Main.ipynb`](notebooks/GCN_Colab_Main.ipynb) in Colab
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/YOUR_USERNAME/vanilla-gcn/blob/main/notebooks/GCN_Colab_Main.ipynb)
 
 The notebook is **fully self-contained** — all code is defined inline. It:
+
 - Installs all dependencies automatically
 - Lets you upload your own dataset (CSV, NPZ, NumPy `.npy`, or Google Drive)
 - Trains both versions and compares them side-by-side
@@ -27,8 +28,6 @@ The notebook is **fully self-contained** — all code is defined inline. It:
 - Downloads all outputs to your machine
 
 ---
-
-
 
 ---
 
@@ -40,14 +39,14 @@ $$H^{(k)} = \sigma\!\left(\tilde{A}\, H^{(k-1)}\, W^{(k)}\right)$$
 
 where:
 
-| Symbol | Definition |
-|--------|-----------|
-| $\hat{A} = A + I$ | Adjacency with self-loops |
-| $\hat{D}_{ii} = \sum_j \hat{A}_{ij}$ | Degree matrix of $\hat{A}$ |
-| $\tilde{A} = \hat{D}^{-1/2}\hat{A}\hat{D}^{-1/2}$ | Symmetrically normalized adjacency |
-| $H^{(0)} = X$ | Input node features |
-| $W^{(k)}$ | Learnable weight matrix at layer $k$ |
-| $\sigma$ | Non-linear activation (ReLU for hidden, none for output) |
+| Symbol                                            | Definition                                               |
+| ------------------------------------------------- | -------------------------------------------------------- |
+| $\hat{A} = A + I$                                 | Adjacency with self-loops                                |
+| $\hat{D}_{ii} = \sum_j \hat{A}_{ij}$              | Degree matrix of $\hat{A}$                               |
+| $\tilde{A} = \hat{D}^{-1/2}\hat{A}\hat{D}^{-1/2}$ | Symmetrically normalized adjacency                       |
+| $H^{(0)} = X$                                     | Input node features                                      |
+| $W^{(k)}$                                         | Learnable weight matrix at layer $k$                     |
+| $\sigma$                                          | Non-linear activation (ReLU for hidden, none for output) |
 
 The graph convolution is implemented literally as `A_tilde @ H @ W`.
 
@@ -141,9 +140,9 @@ git clone <your-repo-url>
 cd vanilla-gcn
 
 # Create virtual environment
-python -m venv .venv
-source .venv/bin/activate      # Linux/macOS
-.venv\Scripts\activate         # Windows
+python -m venv venv
+source venv/bin/activate      # Linux/macOS
+venv\Scripts\activate         # Windows
 
 # Install runtime dependencies
 pip install -r requirements.txt
@@ -159,15 +158,15 @@ pip install -r requirements-dev.txt
 
 Python 3.11 is required. Runtime dependencies:
 
-| Package | Purpose |
-|---------|---------|
-| `torch` | Tensors, autograd, nn.Module |
-| `numpy` | Array operations |
-| `pandas` | Data utilities |
-| `matplotlib` | Visualizations |
-| `networkx` | Graph layout |
+| Package        | Purpose                         |
+| -------------- | ------------------------------- |
+| `torch`        | Tensors, autograd, nn.Module    |
+| `numpy`        | Array operations                |
+| `pandas`       | Data utilities                  |
+| `matplotlib`   | Visualizations                  |
+| `networkx`     | Graph layout                    |
 | `scikit-learn` | PCA for embedding visualization |
-| `pyyaml` | Config loading |
+| `pyyaml`       | Config loading                  |
 
 ---
 
@@ -238,19 +237,19 @@ All hyperparameters live in `configs/default.yaml`:
 seed: 42
 
 model:
-  hidden_dim: 16
-  num_layers: 2
-  dropout: 0.0
+    hidden_dim: 16
+    num_layers: 2
+    dropout: 0.0
 
 training:
-  learning_rate: 0.01
-  weight_decay: 0.0005
-  epochs: 200
+    learning_rate: 0.01
+    weight_decay: 0.0005
+    epochs: 200
 
 data:
-  train_ratio: 0.6
-  validation_ratio: 0.2
-  test_ratio: 0.2
+    train_ratio: 0.6
+    validation_ratio: 0.2
+    test_ratio: 0.2
 ```
 
 Load in Python:
@@ -380,28 +379,28 @@ No changes to model, training, or evaluation code.
 
 ## Mathematical Notation
 
-| Symbol | Description |
-|--------|-------------|
-| $G=(V,E)$ | Graph |
-| $N = |V|$ | Number of nodes |
-| $F$ | Number of input features |
-| $C$ | Number of classes |
-| $A \in \mathbb{R}^{N \times N}$ | Raw adjacency |
-| $\hat{A} = A + I$ | Self-loop adjacency |
-| $\hat{D}_{ii} = \sum_j \hat{A}_{ij}$ | Augmented degree |
-| $\tilde{A} = \hat{D}^{-1/2}\hat{A}\hat{D}^{-1/2}$ | Normalized adjacency |
-| $X \in \mathbb{R}^{N \times F}$ | Node features |
-| $H^{(k)} \in \mathbb{R}^{N \times d_k}$ | Node embeddings at layer $k$ |
-| $W^{(k)} \in \mathbb{R}^{d_{k-1} \times d_k}$ | Weight matrix |
-| $\sigma$ | Activation (ReLU) |
+| Symbol                                            | Description                  |
+| ------------------------------------------------- | ---------------------------- | --- | --------------- |
+| $G=(V,E)$                                         | Graph                        |
+| $N =                                              | V                            | $   | Number of nodes |
+| $F$                                               | Number of input features     |
+| $C$                                               | Number of classes            |
+| $A \in \mathbb{R}^{N \times N}$                   | Raw adjacency                |
+| $\hat{A} = A + I$                                 | Self-loop adjacency          |
+| $\hat{D}_{ii} = \sum_j \hat{A}_{ij}$              | Augmented degree             |
+| $\tilde{A} = \hat{D}^{-1/2}\hat{A}\hat{D}^{-1/2}$ | Normalized adjacency         |
+| $X \in \mathbb{R}^{N \times F}$                   | Node features                |
+| $H^{(k)} \in \mathbb{R}^{N \times d_k}$           | Node embeddings at layer $k$ |
+| $W^{(k)} \in \mathbb{R}^{d_{k-1} \times d_k}$     | Weight matrix                |
+| $\sigma$                                          | Activation (ReLU)            |
 
 ---
 
 ## Reference
 
-- Hamilton, W.L. (2020). *Graph Representation Learning*. Synthesis Lectures on AI and ML.
-- Kipf, T.N. & Welling, M. (2017). *Semi-Supervised Classification with Graph Convolutional Networks*. ICLR.
-- Li, Q., Han, Z., & Wu, X.M. (2018). *Deeper Insights into GCNs for Semi-Supervised Classification*. AAAI.
+- Hamilton, W.L. (2020). _Graph Representation Learning_. Synthesis Lectures on AI and ML.
+- Kipf, T.N. & Welling, M. (2017). _Semi-Supervised Classification with Graph Convolutional Networks_. ICLR.
+- Li, Q., Han, Z., & Wu, X.M. (2018). _Deeper Insights into GCNs for Semi-Supervised Classification_. AAAI.
 
 ---
 
