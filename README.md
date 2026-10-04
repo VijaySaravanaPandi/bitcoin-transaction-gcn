@@ -1,34 +1,43 @@
 ## Two Implementations — Same Architecture
 
-| | 🔴 PyTorch Version | 🔵 NumPy-Only Version |
-|---|---|---|
-| **Location** | `src/vanilla_gcn/` | `src/vanilla_gcn_numpy/` |
-| **Dependencies** | `torch`, `numpy` | `numpy` only |
-| **Autograd** | PyTorch (`loss.backward()`) | Manual chain-rule backprop |
-| **GCN equation** | `A_tilde @ H @ W` | `A_tilde @ H @ W` (identical) |
-| **Preprocessing** | Same math → `torch.Tensor` | Same math → `np.ndarray` |
-| **Checkpointing** | `torch.save` `.pt` format | `np.savez` `.npz` format |
+|                   | 🔴 PyTorch Version          | 🔵 NumPy-Only Version         |
+| ----------------- | --------------------------- | ----------------------------- |
+| **Location**      | `src/vanilla_gcn/`          | `src/vanilla_gcn_numpy/`      |
+| **Dependencies**  | `torch`, `numpy`            | `numpy` only                  |
+| **Autograd**      | PyTorch (`loss.backward()`) | Manual chain-rule backprop    |
+| **GCN equation**  | `A_tilde @ H @ W`           | `A_tilde @ H @ W` (identical) |
+| **Preprocessing** | Same math → `torch.Tensor`  | Same math → `np.ndarray`      |
+| **Checkpointing** | `torch.save` `.pt` format   | `np.savez` `.npz` format      |
 
 > **Both versions implement exactly:** $H^{(k)} = \sigma\!\left(\tilde{A}\,H^{(k-1)}\,W^{(k)}\right)$
 
 ---
 
-## Quick Start — Google Colab
+## Quick Start — Local Elliptic++
 
-Open [`notebooks/GCN_Colab_Main.ipynb`](notebooks/GCN_Colab_Main.ipynb) in Colab:
+Place the Elliptic++ transaction files in `data/raw/`:
 
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/YOUR_USERNAME/vanilla-gcn/blob/main/notebooks/GCN_Colab_Main.ipynb)
+```text
+txs_features.csv
+txs_classes.csv
+txs_edgelist.csv
+```
 
-The notebook is **fully self-contained** — all code is defined inline. It:
-- Installs all dependencies automatically
-- Lets you upload your own dataset (CSV, NPZ, NumPy `.npy`, or Google Drive)
-- Trains both versions and compares them side-by-side
-- Shows training curves, PCA embeddings, and over-smoothing analysis
-- Downloads all outputs to your machine
+Install and train the sparse PyTorch pipeline:
+
+```bash
+python -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+pip install -e .
+make train
+```
+
+The default run uses 183 transaction features, log-scaled graph degree
+features, class-weighted loss, sparse adjacency, and a random labelled split.
+The local project notebook is [`notebooks/Project_Local_Pipeline.ipynb`](notebooks/Project_Local_Pipeline.ipynb).
 
 ---
-
-
 
 ---
 
@@ -40,14 +49,14 @@ $$H^{(k)} = \sigma\!\left(\tilde{A}\, H^{(k-1)}\, W^{(k)}\right)$$
 
 where:
 
-| Symbol | Definition |
-|--------|-----------|
-| $\hat{A} = A + I$ | Adjacency with self-loops |
-| $\hat{D}_{ii} = \sum_j \hat{A}_{ij}$ | Degree matrix of $\hat{A}$ |
-| $\tilde{A} = \hat{D}^{-1/2}\hat{A}\hat{D}^{-1/2}$ | Symmetrically normalized adjacency |
-| $H^{(0)} = X$ | Input node features |
-| $W^{(k)}$ | Learnable weight matrix at layer $k$ |
-| $\sigma$ | Non-linear activation (ReLU for hidden, none for output) |
+| Symbol                                            | Definition                                               |
+| ------------------------------------------------- | -------------------------------------------------------- |
+| $\hat{A} = A + I$                                 | Adjacency with self-loops                                |
+| $\hat{D}_{ii} = \sum_j \hat{A}_{ij}$              | Degree matrix of $\hat{A}$                               |
+| $\tilde{A} = \hat{D}^{-1/2}\hat{A}\hat{D}^{-1/2}$ | Symmetrically normalized adjacency                       |
+| $H^{(0)} = X$                                     | Input node features                                      |
+| $W^{(k)}$                                         | Learnable weight matrix at layer $k$                     |
+| $\sigma$                                          | Non-linear activation (ReLU for hidden, none for output) |
 
 The graph convolution is implemented literally as `A_tilde @ H @ W`.
 
@@ -141,9 +150,9 @@ git clone <your-repo-url>
 cd vanilla-gcn
 
 # Create virtual environment
-python -m venv .venv
-source .venv/bin/activate      # Linux/macOS
-.venv\Scripts\activate         # Windows
+python -m venv venv
+source venv/bin/activate      # Linux/macOS
+venv\Scripts\activate         # Windows
 
 # Install runtime dependencies
 pip install -r requirements.txt
@@ -159,15 +168,15 @@ pip install -r requirements-dev.txt
 
 Python 3.11 is required. Runtime dependencies:
 
-| Package | Purpose |
-|---------|---------|
-| `torch` | Tensors, autograd, nn.Module |
-| `numpy` | Array operations |
-| `pandas` | Data utilities |
-| `matplotlib` | Visualizations |
-| `networkx` | Graph layout |
+| Package        | Purpose                         |
+| -------------- | ------------------------------- |
+| `torch`        | Tensors, autograd, nn.Module    |
+| `numpy`        | Array operations                |
+| `pandas`       | Data utilities                  |
+| `matplotlib`   | Visualizations                  |
+| `networkx`     | Graph layout                    |
 | `scikit-learn` | PCA for embedding visualization |
-| `pyyaml` | Config loading |
+| `pyyaml`       | Config loading                  |
 
 ---
 
@@ -180,6 +189,7 @@ jupyter lab notebooks/
 ```
 
 Start with **`01_gcn_fundamentals.ipynb`** for the complete step-by-step tutorial.
+For the full local Elliptic++ project workflow, use [`notebooks/Project_Local_Pipeline.ipynb`](notebooks/Project_Local_Pipeline.ipynb).
 
 ---
 
@@ -205,6 +215,52 @@ make evaluate
 # or
 python scripts/evaluate.py --checkpoint outputs/checkpoints/vanilla_gcn.pt
 ```
+
+Evaluation includes illicit precision, recall, F1, balanced accuracy, PR-AUC,
+and ROC-AUC in addition to overall accuracy.
+
+## Analysis Workflows
+
+Rank suspicious nodes and analyze learned embedding clusters:
+
+```bash
+make analyze-risk
+```
+
+This writes `risk_ranking.csv`, `embedding_clusters.csv`, and
+`cluster_assignments.npy` under `outputs/analysis/`.
+
+Evaluate whether hidden embeddings recover observed graph links:
+
+```bash
+make evaluate-links
+```
+
+Run temporal evaluation instead of a random split:
+
+```bash
+python scripts/train.py --config configs/temporal.yaml
+python scripts/evaluate.py --config configs/temporal.yaml \
+    --checkpoint outputs/checkpoints/vanilla_gcn.pt
+```
+
+The temporal configuration trains through time step 30, validates on steps
+31–39, and tests on steps 40–49.
+
+## Elliptic++ Actors
+
+Train the same GCN on wallet addresses and the homogeneous address-address
+graph:
+
+```bash
+python scripts/train.py --config configs/actors.yaml
+python scripts/evaluate.py --config configs/actors.yaml \
+    --checkpoint outputs/checkpoints/vanilla_gcn.pt
+```
+
+This uses `wallets_features.csv`, `wallets_classes.csv`, and
+`AddrAddr_edgelist.csv`. The `AddrTx` and `TxAddr` files describe a different
+relation and are not merged into this graph.
 
 ---
 
@@ -238,19 +294,19 @@ All hyperparameters live in `configs/default.yaml`:
 seed: 42
 
 model:
-  hidden_dim: 16
-  num_layers: 2
-  dropout: 0.0
+    hidden_dim: 16
+    num_layers: 2
+    dropout: 0.0
 
 training:
-  learning_rate: 0.01
-  weight_decay: 0.0005
-  epochs: 200
+    learning_rate: 0.01
+    weight_decay: 0.0005
+    epochs: 200
 
 data:
-  train_ratio: 0.6
-  validation_ratio: 0.2
-  test_ratio: 0.2
+    train_ratio: 0.6
+    validation_ratio: 0.2
+    test_ratio: 0.2
 ```
 
 Load in Python:
@@ -380,28 +436,28 @@ No changes to model, training, or evaluation code.
 
 ## Mathematical Notation
 
-| Symbol | Description |
-|--------|-------------|
-| $G=(V,E)$ | Graph |
-| $N = |V|$ | Number of nodes |
-| $F$ | Number of input features |
-| $C$ | Number of classes |
-| $A \in \mathbb{R}^{N \times N}$ | Raw adjacency |
-| $\hat{A} = A + I$ | Self-loop adjacency |
-| $\hat{D}_{ii} = \sum_j \hat{A}_{ij}$ | Augmented degree |
-| $\tilde{A} = \hat{D}^{-1/2}\hat{A}\hat{D}^{-1/2}$ | Normalized adjacency |
-| $X \in \mathbb{R}^{N \times F}$ | Node features |
-| $H^{(k)} \in \mathbb{R}^{N \times d_k}$ | Node embeddings at layer $k$ |
-| $W^{(k)} \in \mathbb{R}^{d_{k-1} \times d_k}$ | Weight matrix |
-| $\sigma$ | Activation (ReLU) |
+| Symbol                                            | Description                  |
+| ------------------------------------------------- | ---------------------------- | --- | --------------- |
+| $G=(V,E)$                                         | Graph                        |
+| $N =                                              | V                            | $   | Number of nodes |
+| $F$                                               | Number of input features     |
+| $C$                                               | Number of classes            |
+| $A \in \mathbb{R}^{N \times N}$                   | Raw adjacency                |
+| $\hat{A} = A + I$                                 | Self-loop adjacency          |
+| $\hat{D}_{ii} = \sum_j \hat{A}_{ij}$              | Augmented degree             |
+| $\tilde{A} = \hat{D}^{-1/2}\hat{A}\hat{D}^{-1/2}$ | Normalized adjacency         |
+| $X \in \mathbb{R}^{N \times F}$                   | Node features                |
+| $H^{(k)} \in \mathbb{R}^{N \times d_k}$           | Node embeddings at layer $k$ |
+| $W^{(k)} \in \mathbb{R}^{d_{k-1} \times d_k}$     | Weight matrix                |
+| $\sigma$                                          | Activation (ReLU)            |
 
 ---
 
 ## Reference
 
-- Hamilton, W.L. (2020). *Graph Representation Learning*. Synthesis Lectures on AI and ML.
-- Kipf, T.N. & Welling, M. (2017). *Semi-Supervised Classification with Graph Convolutional Networks*. ICLR.
-- Li, Q., Han, Z., & Wu, X.M. (2018). *Deeper Insights into GCNs for Semi-Supervised Classification*. AAAI.
+- Hamilton, W.L. (2020). _Graph Representation Learning_. Synthesis Lectures on AI and ML.
+- Kipf, T.N. & Welling, M. (2017). _Semi-Supervised Classification with Graph Convolutional Networks_. ICLR.
+- Li, Q., Han, Z., & Wu, X.M. (2018). _Deeper Insights into GCNs for Semi-Supervised Classification_. AAAI.
 
 ---
 

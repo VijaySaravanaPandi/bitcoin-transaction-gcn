@@ -74,7 +74,18 @@ def add_self_loops(A: torch.Tensor) -> torch.Tensor:
     tensor([1., 1., 1.])
     """
     N = A.shape[0]
-    A_hat: torch.Tensor = A + torch.eye(N, dtype=A.dtype, device=A.device)
+    if A.is_sparse:
+        A = A.coalesce()
+        loop_indices = torch.arange(N, device=A.device, dtype=torch.long)
+        loop_index = torch.stack([loop_indices, loop_indices])
+        loop_values = torch.ones(N, dtype=A.dtype, device=A.device)
+        indices = torch.cat([A.indices(), loop_index], dim=1)
+        values = torch.cat([A.values(), loop_values])
+        A_hat = torch.sparse_coo_tensor(
+            indices, values, size=A.shape, device=A.device
+        ).coalesce()
+    else:
+        A_hat = A + torch.eye(N, dtype=A.dtype, device=A.device)
     logger.debug("add_self_loops: A shape %s → Â shape %s", tuple(A.shape), tuple(A_hat.shape))
     return A_hat
 
@@ -206,15 +217,29 @@ def symmetric_normalize(A: torch.Tensor, *, eps: float = 1e-12) -> torch.Tensor:
     >>> (A_tilde >= 0).all() and (A_tilde <= 1).all()
     tensor(True)
     """
-    D = compute_degree_matrix(A)
-    D_inv_sqrt = compute_inverse_sqrt_degree(D, eps=eps)
-    # Ã = D̂^(-1/2) @ Â @ D̂^(-1/2)
-    A_tilde: torch.Tensor = D_inv_sqrt @ A @ D_inv_sqrt
+    if A.is_sparse:
+        A = A.coalesce()
+        degree = torch.sparse.sum(A, dim=1).to_dense()
+        inv_sqrt = 1.0 / torch.sqrt(degree + eps)
+        values = (
+            A.values()
+            * inv_sqrt[A.indices()[0]]
+            * inv_sqrt[A.indices()[1]]
+        )
+        A_tilde = torch.sparse_coo_tensor(
+            A.indices(), values, size=A.shape, device=A.device
+        ).coalesce()
+    else:
+        D = compute_degree_matrix(A)
+        D_inv_sqrt = compute_inverse_sqrt_degree(D, eps=eps)
+        # Ã = D̂^(-1/2) @ Â @ D̂^(-1/2)
+        A_tilde = D_inv_sqrt @ A @ D_inv_sqrt
+    values = A_tilde.values() if A_tilde.is_sparse else A_tilde
     logger.debug(
         "symmetric_normalize: Ã shape %s, value range [%.4f, %.4f]",
         tuple(A_tilde.shape),
-        float(A_tilde.min()),
-        float(A_tilde.max()),
+        float(values.min()),
+        float(values.max()),
     )
     return A_tilde
 

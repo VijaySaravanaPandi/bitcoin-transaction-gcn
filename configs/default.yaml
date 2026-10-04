@@ -1,40 +1,57 @@
 # =============================================================================
-# Vanilla GCN — Default Configuration
+# Vanilla GCN — Default Configuration (Elliptic++ Transactions Dataset)
 # =============================================================================
-# All hyperparameters and settings live here.
-# Source code should read values from this file via src/vanilla_gcn/config.py.
-# Do NOT hard-code these values anywhere in the source.
+# Dataset: Elliptic++ Transactions
+#   Nodes (transactions) : 203,769
+#   Edges (money flow)   : 234,355
+#   Features per node    : 183  (txs_features.csv cols 1-183; col 0 = txId)
+#   Classes              : 2  (0 = illicit, 1 = licit)
+#   Labelled nodes       : 46,564  (4,545 illicit + 42,019 licit)
+#   Unknown nodes        : 157,205  (included in graph but not in masks)
 # =============================================================================
 
 seed: 42
 
 model:
   # Dimensionality of hidden GCN layers
-  hidden_dim: 16
+  # Larger than synthetic baseline to capture 183-feature input space
+  hidden_dim: 64
   # Number of GCN layers (depth)
   num_layers: 2
-  # Dropout probability (0.0 = no dropout in vanilla baseline)
-  dropout: 0.0
+  # Dropout probability — helps regularise on the large graph
+  dropout: 0.5
 
 training:
   # Adam learning rate
-  learning_rate: 0.01
+  learning_rate: 0.001
   # L2 regularization (weight decay)
   weight_decay: 0.0005
-  # Total training epochs
+  # Total training epochs — more iterations for a larger graph
   epochs: 200
+  # Balance the rare illicit class in the training loss
+  class_weighted_loss: true
 
 data:
-  # Fraction of nodes used for training
+  # Fraction of *labelled* nodes used for training
   train_ratio: 0.6
-  # Fraction of nodes used for validation
+  # Fraction of *labelled* nodes used for validation
   validation_ratio: 0.2
-  # Fraction of nodes used for testing
+  # Fraction of *labelled* nodes used for testing
   test_ratio: 0.2
+  # Dataset to load: "elliptic" | "elliptic_actors" | "synthetic"
+  dataset: "elliptic"
+  # Directory containing txs_features.csv, txs_classes.csv, txs_edgelist.csv
+  raw_dir: "data/raw"
+  # "random" preserves the baseline; "temporal" uses time-step boundaries below
+  split_strategy: "random"
+  temporal_train_end: 30
+  temporal_validation_end: 39
+  # Append log-scaled in/out/total degree features
+  add_graph_features: true
 
 debug:
   # When true, GCNLayer prints shape/stats at every forward pass
-  enabled: true
+  enabled: false
 
 paths:
   # All paths are relative to the project root

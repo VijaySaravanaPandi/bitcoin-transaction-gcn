@@ -27,9 +27,11 @@ from pathlib import Path
 # Allow running from project root without installing the package
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
+import torch
 import torch.optim as optim
 
 from vanilla_gcn.config import load_config
+from vanilla_gcn.data.loader import load_elliptic_actors, load_elliptic_transactions
 from vanilla_gcn.data.preprocessing import prepare_graph
 from vanilla_gcn.data.synthetic import create_synthetic_graph
 from vanilla_gcn.models.vanilla_gcn import VanillaGCN
@@ -107,14 +109,50 @@ def main() -> None:
     # ------------------------------------------------------------------
     # 3. Data
     # ------------------------------------------------------------------
-    logger.info("Loading synthetic graph...")
-    data = create_synthetic_graph(
-        seed=cfg.seed,
-        train_ratio=cfg.data.train_ratio,
-        val_ratio=cfg.data.validation_ratio,
-        test_ratio=cfg.data.test_ratio,
-    )
+    dataset_name = getattr(cfg.data, "dataset", "elliptic")
+    if dataset_name == "elliptic":
+        logger.info("Loading Elliptic++ Transactions dataset from '%s' …", cfg.data.raw_dir)
+        data = load_elliptic_transactions(
+            raw_dir=cfg.data.raw_dir,
+            train_ratio=cfg.data.train_ratio,
+            val_ratio=cfg.data.validation_ratio,
+            test_ratio=cfg.data.test_ratio,
+            seed=cfg.seed,
+            split_strategy=cfg.data.split_strategy,
+            temporal_train_end=cfg.data.temporal_train_end,
+            temporal_validation_end=cfg.data.temporal_validation_end,
+            add_graph_features=cfg.data.add_graph_features,
+        )
+    elif dataset_name == "elliptic_actors":
+        logger.info("Loading Elliptic++ Actors dataset from '%s' …", cfg.data.raw_dir)
+        data = load_elliptic_actors(
+            raw_dir=cfg.data.raw_dir,
+            train_ratio=cfg.data.train_ratio,
+            val_ratio=cfg.data.validation_ratio,
+            test_ratio=cfg.data.test_ratio,
+            seed=cfg.seed,
+            split_strategy=cfg.data.split_strategy,
+            temporal_train_end=cfg.data.temporal_train_end,
+            temporal_validation_end=cfg.data.temporal_validation_end,
+            add_graph_features=cfg.data.add_graph_features,
+        )
+    else:
+        logger.info("Loading synthetic graph …")
+        data = create_synthetic_graph(
+            seed=cfg.seed,
+            train_ratio=cfg.data.train_ratio,
+            val_ratio=cfg.data.validation_ratio,
+            test_ratio=cfg.data.test_ratio,
+        )
     logger.info("%s", data.summary())
+
+    class_weights = None
+    if cfg.training.class_weighted_loss:
+        counts = torch.bincount(
+            data.labels[data.train_mask], minlength=data.num_classes
+        ).float()
+        class_weights = counts.sum() / (data.num_classes * counts.clamp_min(1.0))
+        logger.info("Using class weights: %s", class_weights.tolist())
 
     # ------------------------------------------------------------------
     # 4. Preprocessing
@@ -150,6 +188,7 @@ def main() -> None:
         epochs=cfg.training.epochs,
         lr=cfg.training.learning_rate,
         weight_decay=cfg.training.weight_decay,
+        class_weights=class_weights,
     )
 
     # ------------------------------------------------------------------
@@ -159,6 +198,7 @@ def main() -> None:
     metrics = evaluate_gcn(
         model, A_tilde, X, y,
         data.train_mask, data.val_mask, data.test_mask,
+        class_weights=class_weights,
     )
     logger.info("%s", metrics.summary())
 

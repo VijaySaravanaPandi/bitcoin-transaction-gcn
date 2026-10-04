@@ -109,6 +109,12 @@ outputs/figures/*
 !outputs/figures/.gitkeep
 outputs/embeddings/*
 !outputs/embeddings/.gitkeep
+outputs/analysis/*
+!outputs/analysis/.gitkeep
+outputs/analysis-validation/*
+!outputs/analysis-validation/.gitkeep
+outputs/analysis_notebook/*
+!outputs/analysis_notebook/.gitkeep
 
 # ---------------------------------------------------------------------------
 # PyTorch checkpoints

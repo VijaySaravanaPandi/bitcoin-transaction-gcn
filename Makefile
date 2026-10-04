@@ -14,6 +14,7 @@ PYTHONPATH    := $(SRC)
         test test-numpy test-all test-cov \
         lint format \
         train train-numpy evaluate oversmoothing \
+		analyze-risk evaluate-links \
         notebook colab clean
 
 # ── Help ─────────────────────────────────────────────────────────────────────
@@ -68,6 +69,14 @@ train-numpy:   ## Train pure NumPy GCN (synthetic data, no PyTorch)
 
 evaluate:      ## Evaluate PyTorch GCN from checkpoint
 	PYTHONPATH=$(PYTHONPATH) $(PYTHON) $(SCRIPTS)/evaluate.py \
+	  --config configs/default.yaml
+
+analyze-risk:  ## Rank fraud risk and cluster learned embeddings
+	PYTHONPATH=$(PYTHONPATH) $(PYTHON) $(SCRIPTS)/analyze_risk.py \
+	  --config configs/default.yaml
+
+evaluate-links: ## Evaluate embedding-based link prediction
+	PYTHONPATH=$(PYTHONPATH) $(PYTHON) $(SCRIPTS)/evaluate_links.py \
 	  --config configs/default.yaml
 
 oversmoothing: ## Run over-smoothing depth sweep

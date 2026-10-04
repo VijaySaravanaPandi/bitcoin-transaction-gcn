@@ -108,6 +108,7 @@ def train_gcn(
     lr: float = 0.01,
     weight_decay: float = 5e-4,
     log_every: int = 10,
+    class_weights: Optional[torch.Tensor] = None,
 ) -> TrainingHistory:
     """Train a :class:`VanillaGCN` model using full-batch gradient descent.
 
@@ -152,7 +153,7 @@ def train_gcn(
     synthetic graph is small.  For large graphs, mini-batch sampling would
     be needed.
     """
-    criterion = nn.CrossEntropyLoss()
+    criterion = nn.CrossEntropyLoss(weight=class_weights)
     optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
 
     history = TrainingHistory()
