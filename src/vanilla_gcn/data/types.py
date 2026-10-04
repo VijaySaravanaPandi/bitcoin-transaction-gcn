@@ -79,6 +79,9 @@ class GraphData:
     # ------------------------------------------------------------------
     node_ids: list[int] = field(default_factory=list)
 
+    # Optional temporal value for each node, such as Elliptic++ time step.
+    node_times: torch.Tensor | None = None
+
     # ------------------------------------------------------------------
     # Structural helpers
     # ------------------------------------------------------------------
@@ -98,6 +101,7 @@ class GraphData:
     test_mask: torch.Tensor = field(
         default_factory=lambda: torch.zeros(0, dtype=torch.bool)
     )
+    labelled_mask: torch.Tensor | None = None
 
     # ------------------------------------------------------------------
     # Metadata

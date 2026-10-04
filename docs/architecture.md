@@ -78,6 +78,7 @@ vanilla-gcn/
 ### 1. Data Layer (`data/`)
 
 Responsible for:
+
 - Defining the `GraphData` container
 - Generating or loading graph data
 - Preprocessing (Â, D̂, Ã)
@@ -85,23 +86,25 @@ Responsible for:
 **Key design principle:** The model never sees the raw dataset format.
 Everything is converted to `GraphData` before touching the model.
 
-| Module | Responsibility |
-|--------|---------------|
-| `types.py` | `GraphData` dataclass with adjacency, features, labels, masks |
-| `synthetic.py` | Deterministic 12-node 3-class community graph |
+| Module             | Responsibility                                                                    |
+| ------------------ | --------------------------------------------------------------------------------- |
+| `types.py`         | `GraphData` dataclass with adjacency, features, labels, masks                     |
+| `features.py`      | Optional graph-derived degree features                                            |
+| `synthetic.py`     | Deterministic 12-node 3-class community graph                                     |
 | `preprocessing.py` | `add_self_loops`, `compute_degree_matrix`, `symmetric_normalize`, `prepare_graph` |
-| `loader.py` | `load_graph_from_numpy`, `load_graph_from_npz` (generic interfaces) |
+| `loader.py`        | `load_graph_from_numpy`, `load_graph_from_npz` (generic interfaces)               |
 
 ### 2. Model Layer (`models/`)
 
 Responsible for:
+
 - The core GCN computation: `Ã @ H @ W`
 - Stacking layers into a full model
 - Supporting intermediate output extraction
 
-| Module | Responsibility |
-|--------|---------------|
-| `gcn_layer.py` | `GCNLayer`: single GCN layer, explicit matrix ops |
+| Module           | Responsibility                                             |
+| ---------------- | ---------------------------------------------------------- |
+| `gcn_layer.py`   | `GCNLayer`: single GCN layer, explicit matrix ops          |
 | `vanilla_gcn.py` | `VanillaGCN`: K-layer model, intermediate outputs, summary |
 
 **Critical design constraint:** No PyTorch Geometric / DGL dependency.
@@ -110,49 +113,55 @@ The graph convolution is literally `A_tilde @ H @ self.weight`.
 ### 3. Training Layer (`training/`)
 
 Responsible for:
+
 - Full-batch training loop
 - CrossEntropyLoss + Adam optimiser
 - Per-epoch metric tracking
 
-| Module | Responsibility |
-|--------|---------------|
-| `trainer.py` | `train_gcn(...)` → `TrainingHistory` |
+| Module          | Responsibility                                             |
+| --------------- | ---------------------------------------------------------- |
+| `trainer.py`    | `train_gcn(...)` → `TrainingHistory`                       |
 | `evaluation.py` | `accuracy(...)`, `evaluate_gcn(...)` → `EvaluationMetrics` |
 
 ### 4. Visualization Layer (`visualization/`)
 
 Responsible for:
+
 - Graph plots (before / after GCN)
 - PCA-reduced embedding scatter plots
 - Layer-by-layer progression plots
 - Training curves
 
-| Module | Responsibility |
-|--------|---------------|
-| `graph.py` | `visualize_graph`, `visualize_predictions` |
+| Module          | Responsibility                                      |
+| --------------- | --------------------------------------------------- |
+| `graph.py`      | `visualize_graph`, `visualize_predictions`          |
 | `embeddings.py` | `visualize_embeddings`, `visualize_training_curves` |
-| `layers.py` | `visualize_layer_embeddings` (X → H1 → H2 → logits) |
+| `layers.py`     | `visualize_layer_embeddings` (X → H1 → H2 → logits) |
 
 ### 5. Analysis Layer (`analysis/`)
 
 Responsible for:
+
 - K-hop receptive field computation and visualization
 - Over-smoothing depth sweep experiments
 
-| Module | Responsibility |
-|--------|---------------|
-| `receptive_field.py` | `compute_k_hop_neighbors`, `visualize_receptive_field` |
-| `oversmoothing.py` | `run_oversmoothing_experiment`, `plot_oversmoothing` |
+| Module               | Responsibility                                          |
+| -------------------- | ------------------------------------------------------- |
+| `receptive_field.py` | `compute_k_hop_neighbors`, `visualize_receptive_field`  |
+| `oversmoothing.py`   | `run_oversmoothing_experiment`, `plot_oversmoothing`    |
+| `risk.py`            | Risk ranking, calibration error, and embedding clusters |
+| `link_prediction.py` | Sampled negative edges and embedding link metrics       |
 
 ### 6. Utilities Layer (`utils/`)
 
 Responsible for:
+
 - Centralised logging configuration
 - Model checkpoint save / load
 
-| Module | Responsibility |
-|--------|---------------|
-| `logging.py` | `setup_logging(level, log_file)` |
+| Module             | Responsibility                       |
+| ------------------ | ------------------------------------ |
+| `logging.py`       | `setup_logging(level, log_file)`     |
 | `checkpointing.py` | `save_checkpoint`, `load_checkpoint` |
 
 ---

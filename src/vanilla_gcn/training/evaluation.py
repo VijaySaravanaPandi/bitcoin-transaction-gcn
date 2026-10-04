@@ -21,6 +21,14 @@ from typing import Optional
 
 import torch
 import torch.nn as nn
+from sklearn.metrics import (
+    average_precision_score,
+    balanced_accuracy_score,
+    f1_score,
+    precision_score,
+    recall_score,
+    roc_auc_score,
+)
 
 from vanilla_gcn.models.vanilla_gcn import VanillaGCN
 
@@ -101,6 +109,8 @@ class EvaluationMetrics:
     val_acc: float
     test_acc: float
     predictions: torch.Tensor
+    probabilities: torch.Tensor | None = None
+    fraud_metrics: dict[str, float] | None = None
 
     def summary(self) -> str:
         lines = [
@@ -109,6 +119,13 @@ class EvaluationMetrics:
             f"  Val   loss : {self.val_loss:.4f}  |  Val   acc : {self.val_acc:.1f}%",
             f"  Test  loss : {self.test_loss:.4f}  |  Test  acc : {self.test_acc:.1f}%",
         ]
+        if self.fraud_metrics:
+            lines.append(
+                "  Test fraud: "
+                f"F1={self.fraud_metrics['test_f1']:.3f} | "
+                f"Recall={self.fraud_metrics['test_recall']:.3f} | "
+                f"PR-AUC={self.fraud_metrics['test_pr_auc']:.3f}"
+            )
         return "\n".join(lines)
 
     def __repr__(self) -> str:
@@ -123,6 +140,7 @@ def evaluate_gcn(
     train_mask: torch.Tensor,
     val_mask: torch.Tensor,
     test_mask: torch.Tensor,
+    class_weights: Optional[torch.Tensor] = None,
 ) -> EvaluationMetrics:
     """Evaluate a trained GCN on train, validation, and test splits.
 
@@ -144,12 +162,13 @@ def evaluate_gcn(
     EvaluationMetrics
         Metrics for all three splits plus the per-node predictions.
     """
-    criterion = nn.CrossEntropyLoss()
+    criterion = nn.CrossEntropyLoss(weight=class_weights)
     model.eval()
 
     with torch.no_grad():
         logits: torch.Tensor = model(X, A_tilde)  # (N, C)
         predictions = logits.argmax(dim=1)         # (N,)
+        probabilities = torch.softmax(logits, dim=1)
 
         train_loss = float(criterion(logits[train_mask], y[train_mask]))
         val_loss = float(criterion(logits[val_mask], y[val_mask]))
@@ -159,6 +178,24 @@ def evaluate_gcn(
         val_acc = accuracy(logits, y, val_mask)
         test_acc = accuracy(logits, y, test_mask)
 
+    test_labels = y[test_mask].cpu().numpy()
+    test_predictions = predictions[test_mask].cpu().numpy()
+    test_probabilities = probabilities[test_mask, 0].cpu().numpy()
+    fraud_metrics = {
+        "test_precision": precision_score(test_labels, test_predictions, pos_label=0, zero_division=0),
+        "test_recall": recall_score(test_labels, test_predictions, pos_label=0, zero_division=0),
+        "test_f1": f1_score(test_labels, test_predictions, pos_label=0, zero_division=0),
+        "test_macro_f1": f1_score(test_labels, test_predictions, average="macro", zero_division=0),
+        "test_balanced_accuracy": balanced_accuracy_score(test_labels, test_predictions),
+        "test_pr_auc": average_precision_score((test_labels == 0).astype(int), test_probabilities),
+    }
+    if len(set(test_labels.tolist())) == 2:
+        fraud_metrics["test_roc_auc"] = roc_auc_score(
+            (test_labels == 0).astype(int), test_probabilities
+        )
+    else:
+        fraud_metrics["test_roc_auc"] = float("nan")
+
     metrics = EvaluationMetrics(
         train_loss=train_loss,
         val_loss=val_loss,
@@ -167,6 +204,8 @@ def evaluate_gcn(
         val_acc=val_acc,
         test_acc=test_acc,
         predictions=predictions,
+        probabilities=probabilities,
+        fraud_metrics=fraud_metrics,
     )
 
     logger.info("%s", metrics.summary())

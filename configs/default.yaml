@@ -28,6 +28,8 @@ training:
   weight_decay: 0.0005
   # Total training epochs — more iterations for a larger graph
   epochs: 200
+  # Balance the rare illicit class in the training loss
+  class_weighted_loss: true
 
 data:
   # Fraction of *labelled* nodes used for training
@@ -36,10 +38,16 @@ data:
   validation_ratio: 0.2
   # Fraction of *labelled* nodes used for testing
   test_ratio: 0.2
-  # Dataset to load: "elliptic" | "synthetic"
+  # Dataset to load: "elliptic" | "elliptic_actors" | "synthetic"
   dataset: "elliptic"
   # Directory containing txs_features.csv, txs_classes.csv, txs_edgelist.csv
   raw_dir: "data/raw"
+  # "random" preserves the baseline; "temporal" uses time-step boundaries below
+  split_strategy: "random"
+  temporal_train_end: 30
+  temporal_validation_end: 39
+  # Append log-scaled in/out/total degree features
+  add_graph_features: true
 
 debug:
   # When true, GCNLayer prints shape/stats at every forward pass

@@ -13,19 +13,29 @@
 
 ---
 
-## Quick Start — Google Colab
+## Quick Start — Local Elliptic++
 
-Open [`notebooks/GCN_Colab_Main.ipynb`](notebooks/GCN_Colab_Main.ipynb) in Colab:
+Place the Elliptic++ transaction files in `data/raw/`:
 
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/YOUR_USERNAME/vanilla-gcn/blob/main/notebooks/GCN_Colab_Main.ipynb)
+```text
+txs_features.csv
+txs_classes.csv
+txs_edgelist.csv
+```
 
-The notebook is **fully self-contained** — all code is defined inline. It:
+Install and train the sparse PyTorch pipeline:
 
-- Installs all dependencies automatically
-- Lets you upload your own dataset (CSV, NPZ, NumPy `.npy`, or Google Drive)
-- Trains both versions and compares them side-by-side
-- Shows training curves, PCA embeddings, and over-smoothing analysis
-- Downloads all outputs to your machine
+```bash
+python -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+pip install -e .
+make train
+```
+
+The default run uses 183 transaction features, log-scaled graph degree
+features, class-weighted loss, sparse adjacency, and a random labelled split.
+The local project notebook is [`notebooks/Project_Local_Pipeline.ipynb`](notebooks/Project_Local_Pipeline.ipynb).
 
 ---
 
@@ -179,6 +189,7 @@ jupyter lab notebooks/
 ```
 
 Start with **`01_gcn_fundamentals.ipynb`** for the complete step-by-step tutorial.
+For the full local Elliptic++ project workflow, use [`notebooks/Project_Local_Pipeline.ipynb`](notebooks/Project_Local_Pipeline.ipynb).
 
 ---
 
@@ -204,6 +215,52 @@ make evaluate
 # or
 python scripts/evaluate.py --checkpoint outputs/checkpoints/vanilla_gcn.pt
 ```
+
+Evaluation includes illicit precision, recall, F1, balanced accuracy, PR-AUC,
+and ROC-AUC in addition to overall accuracy.
+
+## Analysis Workflows
+
+Rank suspicious nodes and analyze learned embedding clusters:
+
+```bash
+make analyze-risk
+```
+
+This writes `risk_ranking.csv`, `embedding_clusters.csv`, and
+`cluster_assignments.npy` under `outputs/analysis/`.
+
+Evaluate whether hidden embeddings recover observed graph links:
+
+```bash
+make evaluate-links
+```
+
+Run temporal evaluation instead of a random split:
+
+```bash
+python scripts/train.py --config configs/temporal.yaml
+python scripts/evaluate.py --config configs/temporal.yaml \
+    --checkpoint outputs/checkpoints/vanilla_gcn.pt
+```
+
+The temporal configuration trains through time step 30, validates on steps
+31–39, and tests on steps 40–49.
+
+## Elliptic++ Actors
+
+Train the same GCN on wallet addresses and the homogeneous address-address
+graph:
+
+```bash
+python scripts/train.py --config configs/actors.yaml
+python scripts/evaluate.py --config configs/actors.yaml \
+    --checkpoint outputs/checkpoints/vanilla_gcn.pt
+```
+
+This uses `wallets_features.csv`, `wallets_classes.csv`, and
+`AddrAddr_edgelist.csv`. The `AddrTx` and `TxAddr` files describe a different
+relation and are not merged into this graph.
 
 ---
 

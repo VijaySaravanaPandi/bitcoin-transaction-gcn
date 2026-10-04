@@ -1,0 +1,36 @@
+# Elliptic++ Transactions temporal evaluation configuration
+seed: 42
+
+model:
+  hidden_dim: 64
+  num_layers: 2
+  dropout: 0.5
+
+training:
+  learning_rate: 0.001
+  weight_decay: 0.0005
+  epochs: 200
+  class_weighted_loss: true
+
+data:
+  train_ratio: 0.6
+  validation_ratio: 0.2
+  test_ratio: 0.2
+  dataset: "elliptic"
+  raw_dir: "data/raw"
+  split_strategy: "temporal"
+  temporal_train_end: 30
+  temporal_validation_end: 39
+  add_graph_features: true
+
+debug:
+  enabled: false
+
+paths:
+  data_raw: "data/raw"
+  data_processed: "data/processed"
+  outputs: "outputs"
+  checkpoints: "outputs/checkpoints"
+  figures: "outputs/figures"
+  embeddings: "outputs/embeddings"
+  logs: "outputs/logs"

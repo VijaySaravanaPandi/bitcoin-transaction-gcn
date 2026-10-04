@@ -41,8 +41,13 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 
-def mean_pairwise_cosine_similarity(Z: torch.Tensor) -> float:
-    """Compute the mean pairwise cosine similarity between all node pairs.
+def mean_pairwise_cosine_similarity(
+    Z: torch.Tensor,
+    *,
+    max_pairs: int = 100_000,
+    seed: int = 42,
+) -> float:
+    """Estimate mean pairwise cosine similarity from sampled node pairs.
 
     A value near 1.0 indicates over-smoothing (all embeddings are similar).
     A lower value indicates diverse node representations.
@@ -57,15 +62,18 @@ def mean_pairwise_cosine_similarity(Z: torch.Tensor) -> float:
     float
         Mean pairwise cosine similarity, in the range [-1, 1].
     """
-    # Normalize rows to unit vectors
+    if Z.shape[0] < 2:
+        return 1.0
     Z_norm = F.normalize(Z, p=2, dim=1)  # (N, D)
-    # Pairwise cosine similarity matrix
-    sim_matrix = Z_norm @ Z_norm.T  # (N, N)
     N = Z.shape[0]
-    # Exclude diagonal (self-similarity = 1)
-    mask = ~torch.eye(N, dtype=torch.bool)
-    mean_sim = sim_matrix[mask].mean().item()
-    return float(mean_sim)
+    pair_count = min(max_pairs, N * (N - 1) // 2)
+    generator = torch.Generator(device=Z.device).manual_seed(seed)
+    src = torch.randint(N, (pair_count,), generator=generator, device=Z.device)
+    dst = torch.randint(N, (pair_count,), generator=generator, device=Z.device)
+    distinct = src != dst
+    if not distinct.any():
+        return 1.0
+    return float((Z_norm[src[distinct]] * Z_norm[dst[distinct]]).sum(dim=1).mean())
 
 
 # ---------------------------------------------------------------------------

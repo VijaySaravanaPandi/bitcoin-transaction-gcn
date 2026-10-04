@@ -43,6 +43,7 @@ class TrainingConfig:
     learning_rate: float = 0.01
     weight_decay: float = 0.0005
     epochs: int = 200
+    class_weighted_loss: bool = True
 
 
 @dataclass
@@ -52,11 +53,15 @@ class DataConfig:
     train_ratio: float = 0.6
     validation_ratio: float = 0.2
     test_ratio: float = 0.2
-    # "elliptic" loads the Elliptic++ Transactions CSV files;
+    # "elliptic" loads transactions; "elliptic_actors" loads wallets;
     # "synthetic" uses the built-in synthetic community graph.
     dataset: str = "elliptic"
     # Directory containing txs_features.csv / txs_classes.csv / txs_edgelist.csv
     raw_dir: str = "data/raw"
+    split_strategy: str = "random"
+    temporal_train_end: int = 30
+    temporal_validation_end: int = 39
+    add_graph_features: bool = True
 
 
 @dataclass
@@ -150,9 +155,12 @@ def load_config(path: str | Path | None = None) -> GCNConfig:
     defaults: dict[str, Any] = {
         "seed": 42,
         "model": {"hidden_dim": 16, "num_layers": 2, "dropout": 0.0},
-        "training": {"learning_rate": 0.01, "weight_decay": 0.0005, "epochs": 200},
+        "training": {"learning_rate": 0.01, "weight_decay": 0.0005, "epochs": 200,
+                      "class_weighted_loss": True},
         "data": {"train_ratio": 0.6, "validation_ratio": 0.2, "test_ratio": 0.2,
-                  "dataset": "elliptic", "raw_dir": "data/raw"},
+                  "dataset": "elliptic", "raw_dir": "data/raw",
+                  "split_strategy": "random", "temporal_train_end": 30,
+                  "temporal_validation_end": 39, "add_graph_features": True},
         "debug": {"enabled": True},
         "paths": {
             "data_raw": "data/raw",
