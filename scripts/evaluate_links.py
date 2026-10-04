@@ -18,6 +18,7 @@ from vanilla_gcn.data.preprocessing import prepare_graph  # noqa: E402
 from vanilla_gcn.models.vanilla_gcn import VanillaGCN  # noqa: E402
 from vanilla_gcn.seed import set_seed  # noqa: E402
 from vanilla_gcn.utils.checkpointing import load_checkpoint  # noqa: E402
+from vanilla_gcn.visualization.analysis import plot_link_metrics  # noqa: E402
 
 
 def main() -> None:
@@ -59,6 +60,8 @@ def main() -> None:
         negative_count=args.negative_count,
         seed=cfg.seed,
     )
+    output_dir = Path(cfg.paths.figures)
+    plot_link_metrics(metrics, save_path=output_dir / "link_prediction.png")
     print("Link prediction metrics:")
     for key, value in metrics.items():
         print(f"  {key}: {value:.4f}")

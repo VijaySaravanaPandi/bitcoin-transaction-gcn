@@ -60,7 +60,11 @@ make analyze-risk
 The analysis script writes:
 
 - `outputs/analysis/risk_ranking.csv`
+- `outputs/analysis/risk_ranking.png`
+- `outputs/analysis/calibration_curve.png`
+- `outputs/analysis/test_confusion_matrix.png`
 - `outputs/analysis/embedding_clusters.csv`
+- `outputs/analysis/embedding_clusters.png`
 - `outputs/analysis/cluster_assignments.npy`
 
 Risk ranking combines illicit probability and predictive entropy. Cluster summaries report node counts and the fraction of labelled nodes classified as illicit.
@@ -72,6 +76,8 @@ make evaluate-links
 ```
 
 This uses the final hidden embeddings and compares observed edges with sampled non-edges using ROC-AUC and average precision. It is an analysis workflow; it does not change the node-classification objective.
+
+The link workflow also saves `outputs/figures/link_prediction.png`.
 
 ## Large-graph constraints
 

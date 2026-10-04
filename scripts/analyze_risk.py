@@ -23,6 +23,12 @@ from vanilla_gcn.data.preprocessing import prepare_graph  # noqa: E402
 from vanilla_gcn.models.vanilla_gcn import VanillaGCN  # noqa: E402
 from vanilla_gcn.seed import set_seed  # noqa: E402
 from vanilla_gcn.utils.checkpointing import load_checkpoint  # noqa: E402
+from vanilla_gcn.visualization.analysis import (  # noqa: E402
+    plot_calibration_curve,
+    plot_cluster_summary,
+    plot_confusion_matrix,
+    plot_risk_ranking,
+)
 
 
 def parse_args() -> argparse.Namespace:
@@ -74,17 +80,29 @@ def main() -> None:
 
     ranking = risk_ranking(logits, data.node_ids, labels, top_k=args.top_k)
     ranking.to_csv(output_dir / "risk_ranking.csv", index=False)
+    plot_risk_ranking(ranking, save_path=output_dir / "risk_ranking.png")
 
     test_mask = data.test_mask.cpu().numpy()
     probabilities = torch.softmax(logits, dim=1)[:, 0].detach().cpu().numpy()
     labelled_test = labels.cpu().numpy()[test_mask]
     ece = expected_calibration_error(probabilities[test_mask], labelled_test)
+    plot_calibration_curve(
+        probabilities[test_mask], labelled_test,
+        save_path=output_dir / "calibration_curve.png",
+    )
+    plot_confusion_matrix(
+        logits, data.labels, data.test_mask,
+        save_path=output_dir / "test_confusion_matrix.png",
+    )
 
     assignments, cluster_summary, cluster_metrics = cluster_embeddings(
         embeddings, labels, n_clusters=args.clusters, seed=cfg.seed
     )
     cluster_summary.to_csv(output_dir / "embedding_clusters.csv", index=False)
     np.save(output_dir / "cluster_assignments.npy", assignments)
+    plot_cluster_summary(
+        cluster_summary, save_path=output_dir / "embedding_clusters.png"
+    )
 
     print(f"Saved risk ranking: {output_dir / 'risk_ranking.csv'}")
     print(f"Saved cluster summary: {output_dir / 'embedding_clusters.csv'}")
